@@ -167,10 +167,16 @@ class SegGPTSegmenter(Segmenter):
             outputs = self.model(**inputs, feature_ensemble=use_ensemble)
 
         raw = self._raw_distance_maps(outputs, (h, w))
-        pred = self.processor.post_process_semantic_segmentation(
-            outputs, target_sizes=[(h, w)], num_labels=1
-        )[0]
-        pred_np = pred.detach().cpu().numpy()
+        # feature_ensemble may leave batch dim = n_prompts; match target_sizes to batch
+        batch = int(outputs.pred_masks.shape[0])
+        preds = self.processor.post_process_semantic_segmentation(
+            outputs, target_sizes=[(h, w)] * batch, num_labels=1
+        )
+        if use_ensemble and batch > 1:
+            stacked = torch.stack([(p > 0).to(torch.uint8) for p in preds], dim=0)
+            pred_np = (stacked.float().mean(0) > 0.5).cpu().numpy().astype(np.uint8)
+        else:
+            pred_np = preds[0].detach().cpu().numpy()
         binary = ((pred_np > 0).astype(np.uint8) * 255)
 
         diagnosis = "empty_prediction"
