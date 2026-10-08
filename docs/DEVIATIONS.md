@@ -12,3 +12,6 @@ Silent deviations are bugs.
 | D005 | 0 | `setuptools` capped at `<82` (installed ≥78.1.1) | `torch==2.11.0+cu128` requires `setuptools<82`; newer advisory fix wants ≥83 | Residual setuptools advisory risk until torch relaxes pin; recorded in pip-audit skips/notes | Open |
 | D006 | 0 | `pip-audit` cannot audit `torch`/`torchvision` cu128 wheels (not on PyPI) | Index wheels | Supply-chain blind spot for CUDA wheels | Open |
 | D007 | 0 | `pytest` bumped to ≥9.0.3 for PYSEC-2026-1845 | Security fix | Dev-dep only | Closed |
+| D008 | 2 | Model adapters wrap legacy `src/*_runner.py` instead of full rewrite | Preserve LOO behaviour first; golden test gates drift | Legacy still in tree until inlined | Open |
+| D009 | 2 | Golden LOO tolerances | Dual runs measured: run-to-run diff 0.0; max vs LOO_REPORT 0.0005; tol set to 0.01 | Closed in `configs/golden_loo.yaml` | Closed |
+| D010 | 1 | Gate 1 skipped — CSV CRS/joins unambiguous from audit | Walk1 WGS84 HK; VID local metres; exact `image_name` 100% match; duplicate filenames across zips handled by `archive::path` ids | None if audit correct | Closed |

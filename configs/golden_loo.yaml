@@ -1,0 +1,53 @@
+# Golden LOO regression (no-crop). Expected IoUs from outputs/loo_b/LOO_REPORT.md
+# (hand masks, variant B). Anecdotal — only 4 pairs from 3 photos.
+
+schema_version: "1"
+
+source: "LOO_REPORT.md GT IoU table, nocrop rows"
+
+pairs:
+  - name: 02_to_01
+    ref: nail_ref_02_2D16_rebar_install
+    test: nail_ref_01_2D12_rebar_install
+    expected_iou:
+      persam: 0.000
+      persam_f: 0.000
+      seggpt: 0.000
+  - name: 01_to_02
+    ref: nail_ref_01_2D12_rebar_install
+    test: nail_ref_02_2D16_rebar_install
+    expected_iou:
+      persam: 0.426
+      persam_f: 0.000
+      seggpt: 0.161
+  - name: 03_to_02
+    ref: nail_ref_03_2D17_depth_measure
+    test: nail_ref_02_2D16_rebar_install
+    expected_iou:
+      persam: 0.537
+      persam_f: 0.366
+      seggpt: 0.692
+  - name: 02_to_03
+    ref: nail_ref_02_2D16_rebar_install
+    test: nail_ref_03_2D17_depth_measure
+    expected_iou:
+      persam: 0.370
+      persam_f: 0.957
+      seggpt: 0.801
+
+# Tolerances measured 2026-10-08: two full golden runs (cache cleared each time).
+# Run-to-run abs IoU diff = 0.0 for all models/pairs; max |iou - LOO_REPORT| = 0.0005.
+tolerances:
+  status: measured
+  source: >
+    measured dual run outputs/golden_loo/result.json + result_run2.json;
+    tol = max(0.01, 3*run_diff, 2*err_vs_report) → 0.01 all models
+  abs_iou:
+    persam: 0.01
+    persam_f: 0.01
+    seggpt: 0.01
+
+paths:
+  images_dir: data/refs/soil_nail/images
+  masks_dir: data/refs/soil_nail/masks
+  models_config: configs/models.yaml

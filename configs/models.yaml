@@ -1,0 +1,62 @@
+# Model + instance-extraction parameters. Every numeric has a source note.
+
+schema_version: "1"
+
+sam:
+  type: vit_h
+  checkpoint: weights/sam_vit_h_4b8939.pth
+  sha256: a7bf3b02f3ebf1267aba913ff637d9a2d5c33d3173bb679e46d9f338c26f262e
+  source: "measured sha256sum of weights/sam_vit_h_4b8939.pth"
+
+seggpt:
+  model_id: BAAI/seggpt-vit-large
+  revision: 77b179b5a1b50a48bd04ef3138804cfacc2ced73
+  source: "local HF hub snapshot dir name under models--BAAI--seggpt-vit-large/snapshots/"
+
+persam_f:
+  train_epochs: 1000
+  lr: 0.001
+  adamw_eps: 0.0001
+  source: "upstream Personalize-SAM persam_f.py CLI defaults"
+
+multi_instance:
+  enabled_default: false
+  top_k: 5
+  min_dist_px: 40
+  score_ratio: 0.5
+  nms_iou: 0.5
+  source: "our extension (not the PerSAM paper) — prototype defaults from src/persam_runner.py"
+
+seggpt_instances:
+  min_cc_area_px: 50
+  source: "our post-process — prototype default from src/seggpt_runner.py"
+
+tight_prompt_crop:
+  enabled_default: false
+  margin: 0.15
+  source: "ablation only — hurt LOO means; margin from prototype"
+
+mask_area:
+  warn_pct: 25.0
+  source: "prototype decision (compare.MASK_AREA_WARN_PCT)"
+
+tiling:
+  enabled_default: false
+  tile_sizes_px: [1024, 1536]
+  overlap: 0.25
+  source: >
+    SAM encoder 1024; larger tiles for 3840x1920 site-walk (measured ingest);
+    overlap from prototype tiling.py
+
+oom:
+  max_retries: 2
+  fallback_tile_px: 768
+  source: "my decision — retry with smaller tile after CUDA OOM"
+
+seeds:
+  global_seed: 42
+  source: "configs/project.yaml"
+
+cache:
+  persam_f_dir: data/caches/persam_f
+  source: "my decision — cache weights by ref+config hash"

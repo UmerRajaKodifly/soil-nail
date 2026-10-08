@@ -80,11 +80,18 @@ exclude = [
 [[tool.mypy.overrides]]
 module = [
   "cv2",
+  "torch",
   "torch.*",
+  "transformers",
   "transformers.*",
+  "PIL",
   "PIL.*",
+  "scipy",
   "scipy.*",
+  "sklearn",
   "sklearn.*",
+  "src",
+  "src.*",
 ]
 ignore_missing_imports = true
 
