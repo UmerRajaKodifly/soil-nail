@@ -72,8 +72,9 @@ warn_unreachable = true
 show_error_codes = true
 mypy_path = "src"
 packages = ["soilnail"]
+explicit_package_bases = true
 exclude = [
-  "(?x)(^third_party/|^\\.venv/|^outputs/|^data/)",
+  "(?x)(^third_party/|^\\.venv/|^outputs/|^data/|^src/device\\.py|^src/preprocess\\.py|^src/segmenter\\.py|^src/tiling\\.py|^src/persam_runner\\.py|^src/seggpt_runner\\.py)",
 ]
 
 [[tool.mypy.overrides]]

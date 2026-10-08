@@ -1,0 +1,64 @@
+# Safe ingestion limits and paths. Paths relative to repository root.
+
+schema_version: "1"
+
+paths:
+  raw_dir: data/site_walk_raw
+  extract_root: data/site_walk_extracted
+  manifest_dir: data/manifests
+  audit_md: docs/DATA_AUDIT.md
+  source: "my decision — keep client data outside src/; gitignored"
+
+archives:
+  - name: images
+    zip_filename: images.zip
+    csv_filename: VID_20260808_104335_00_011.csv
+    source: "measured from files placed in data/site_walk_raw/"
+  - name: walk1
+    zip_filename: "Walk 1.zip"
+    csv_filename: "Walk 1.csv"
+    source: "measured from files placed in data/site_walk_raw/"
+
+zip_limits:
+  max_uncompressed_bytes: 5000000000
+  max_compression_ratio: 200.0
+  max_members: 10000
+  forbid_symlinks: true
+  forbid_absolute_paths: true
+  source: >
+    my decision — Walk 1 ~1.4 GiB uncompressed (zip listing);
+    zip-bomb / zip-slip guards (industry standard). Members cap >> 541.
+
+image:
+  allowed_extensions:
+    - .jpg
+    - .jpeg
+    - .png
+    - .tif
+    - .tiff
+    - .webp
+    - .bmp
+  max_pixels: 100000000
+  apply_exif_transpose: true
+  source: "Pillow ImageOps.exif_transpose; 100MP decode cap — my decision"
+
+stamp_probe:
+  sample_size: 12
+  corner_frac_w: 0.25
+  corner_frac_h: 0.12
+  sat_delta_min: 0.08
+  sat_abs_min: 0.25
+  likely_fraction_threshold: 0.5
+  # Measured after ingest (see data/manifests/stamp_measure.json + docs/DATA_AUDIT.md).
+  # Crop remains disabled unless experiments explicitly opt in.
+  measured_cover_frac_w: 0.25
+  measured_cover_frac_h: 0.1203125
+  crop_enabled_default: false
+  source: >
+    probe heuristics: my decision;
+    measured_cover_*: measured on seeded sample of 12 site-walk frames (9/12 orange masks);
+    crop_enabled_default false — my decision after measurement
+
+seeds:
+  global_seed: 42
+  source: "configs/project.yaml — reproducibility"
