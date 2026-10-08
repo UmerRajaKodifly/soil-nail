@@ -1,0 +1,8 @@
+{
+  "stem": "nail_ref_01_2D12_rebar_install",
+  "variant": "B",
+  "draft": true,
+  "note": "Provisional SAM/colour draft for LOO. Re-annotate with: python tools/annotate_mask.py --variant B",
+  "area_pct": 5.2101041666666665,
+  "area_flag": false
+}

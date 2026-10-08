@@ -1,0 +1,10 @@
+# Vulnerabilities intentionally ignored by `make security` with a written reason.
+# Review when upgrading torch (setuptools pin may then be liftable).
+
+ignored:
+  - id: PYSEC-2026-3447
+    package: setuptools
+    reason: >
+      torch==2.11.0+cu128 requires setuptools<82; fix version is 83.0.0.
+      We pin setuptools>=78.1.1,<82 (see docs/DEVIATIONS.md D005).
+    source: measured by pip-audit on 2026-10-08; torch METADATA Requires-Dist

@@ -1,0 +1,109 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "soilnail"
+version = "0.1.0"
+description = "Soil-nail one-shot detection library for SmartEye (CEDD GEO GE/2024/21)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary — internal SmartEye experiment; third-party weights separately licensed" }
+authors = [{ name = "Kodifly / SmartEye" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "ruff==0.14.0",
+  "mypy==1.18.2",
+  "pytest>=9.0.3",
+  "pytest-cov==7.0.0",
+  "setuptools>=78.1.1,<82",
+  "hypothesis==6.140.2",
+  "bandit==1.8.6",
+  "pip-audit==2.9.0",
+  "pip-licenses==5.0.0",
+  "types-PyYAML==6.0.12.20250915",
+  "pydantic==2.12.0",
+  "PyYAML==6.0.3",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["soilnail*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src", "tests", "scripts"]
+extend-exclude = [
+  ".venv",
+  "third_party",
+  "outputs",
+  "data",
+  "weights",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = [
+  "E501",  # line length handled by formatter preference; long paths in docs strings OK
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Legacy prototype — excluded from strict modernization until Phase 2 move
+"compare.py" = ["ALL"]
+"tools/**" = ["ALL"]
+"src/device.py" = ["ALL"]
+"src/preprocess.py" = ["ALL"]
+"src/segmenter.py" = ["ALL"]
+"src/tiling.py" = ["ALL"]
+"src/persam_runner.py" = ["ALL"]
+"src/seggpt_runner.py" = ["ALL"]
+"src/__init__.py" = ["ALL"]
+"scripts/smoke_all.py" = ["ALL"]
+"scripts/run_loo_matrix.py" = ["ALL"]
+"scripts/setup.sh" = ["ALL"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+show_error_codes = true
+mypy_path = "src"
+packages = ["soilnail"]
+exclude = [
+  "(?x)(^third_party/|^\\.venv/|^outputs/|^data/)",
+]
+
+[[tool.mypy.overrides]]
+module = [
+  "cv2",
+  "torch.*",
+  "transformers.*",
+  "PIL.*",
+  "scipy.*",
+  "sklearn.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = [
+  "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["soilnail"]
+branch = true
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
+# fail_under raised in Phase 6 once package is filled (see configs/qa.yaml)
+
+[tool.bandit]
+exclude_dirs = ["tests", "third_party", ".venv", "outputs", "data"]
+skips = ["B101"]  # assert used in tests; production code audited separately

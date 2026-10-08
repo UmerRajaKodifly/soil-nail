@@ -1,0 +1,40 @@
+# Environments / caches
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.cache/
+.hf_cache/
+*.log
+.DS_Store
+.env
+CURSOR_PROMPT.md
+
+# Model weights (large; pin SHA-256 in manifests instead)
+weights/*
+!weights/.gitkeep
+*.pth
+*.pt
+!third_party/Personalize-SAM/weights/mobile_sam.pt
+
+# Experiment / run outputs (regenerable; includes prototype PDFs)
+outputs/
+
+# Client site-walk data — never commit (may contain people)
+data/site_walk_raw/
+data/site_walk_extracted/
+data/manifests/
+*.zip
+
+# Local stores / thumbnails
+*.sqlite
+*.sqlite3
+.thumbnails/
+
+# Lock of editable installs may include local paths — keep requirements.lock tracked
+# after `make setup` once it contains only package specs.

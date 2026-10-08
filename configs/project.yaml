@@ -1,0 +1,10 @@
+# Root project config — expanded by later phases.
+# Every numeric field that affects behaviour must carry a `source` note nearby
+# or on the nested object (pydantic schemas enforce presence where required).
+
+project_name: soilnail-smarteye
+schema_version: "0"
+
+seeds:
+  global_seed: 42
+  source: "my decision — fixed for reproducibility of pilot/label samples"
