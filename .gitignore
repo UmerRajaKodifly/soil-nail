@@ -6,6 +6,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.hypothesis/
 .coverage
 htmlcov/
 .cache/
@@ -13,28 +14,46 @@ htmlcov/
 *.log
 .DS_Store
 .env
+.env.*
+!.env.example
 CURSOR_PROMPT.md
 
-# Model weights (large; pin SHA-256 in manifests instead)
+# IDE / editor
+.cursor/
+.vscode/
+.idea/
+*.swp
+*~
+
+# Model weights (large; obtain via scripts/setup.sh — pin SHA-256 in configs/models.yaml)
 weights/*
 !weights/.gitkeep
 *.pth
 *.pt
 !third_party/Personalize-SAM/weights/mobile_sam.pt
 
-# Experiment / run outputs (regenerable; includes prototype PDFs)
+# Experiment / run outputs (regenerable)
 outputs/
 
-# Client site-walk data — never commit (may contain people)
+# Client site-walk data — never commit (may contain people / PII)
 data/site_walk_raw/
 data/site_walk_extracted/
 data/manifests/
+data/caches/
 *.zip
 
-# Local stores / thumbnails
+# Local stores / thumbnails / UI caches
 *.sqlite
 *.sqlite3
+*.sqlite-wal
+*.sqlite-shm
 .thumbnails/
+logs/
 
-# Lock of editable installs may include local paths — keep requirements.lock tracked
-# after `make setup` once it contains only package specs.
+# Scratch screenshots / local annotator dumps
+annotate*.png
+*_screenshot_*.png
+
+# Hugging Face / torch hub local caches (if created under repo)
+models--*/
+hub/
