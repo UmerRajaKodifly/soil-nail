@@ -17,6 +17,18 @@ class RLE(BaseModel):
     size: list[int]  # [h, w]
 
 
+class SphericalGeom(BaseModel):
+    """Geometry on the unit sphere (radians unless noted)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    lon_rad: float
+    lat_rad: float
+    angular_width_deg: float
+    angular_height_deg: float
+    solid_angle_sr: float
+
+
 class Detection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -25,9 +37,13 @@ class Detection(BaseModel):
     config_id: str
     instance_id: int
     mask_rle: RLE
-    bbox_xywh: list[float]  # COCO xywh
+    bbox_xywh: list[float]  # COCO xywh in face (or equirect for legacy) coords
     area_px: int
-    area_fraction: float
+    area_fraction: float = Field(description="Fraction of the face pixel area (mask_px / face_px).")
+    area_fraction_solid_angle: float | None = Field(
+        default=None,
+        description="solid_angle_sr / (4π); None for non-360 / legacy runs.",
+    )
     raw_score: float = Field(
         description=(
             "Uncalibrated model score (SAM IoU head or SegGPT proxy). "
@@ -36,8 +52,24 @@ class Detection(BaseModel):
     )
     touches_border: bool = False
     merged_across_tiles: bool = False
+    merged_across_faces: bool = False
     area_flag: bool = False
     source_tile_ids: list[str] = Field(default_factory=list)
+    face_id: str | None = Field(
+        default=None, description="Cubemap face id F|R|B|L|U|D; None for flat/legacy."
+    )
+    spherical: SphericalGeom | None = None
+    equirect_polygon_xy: list[list[float]] | None = Field(
+        default=None,
+        description="Largest equirect ring [[x,y],…] (convenience); prefer equirect_polygons_xy.",
+    )
+    equirect_polygons_xy: list[list[list[float]]] | None = Field(
+        default=None,
+        description=(
+            "One or more closed rings in equirect pixel coords. "
+            "Split into multiple rings when the contour crosses the ±180° wrap."
+        ),
+    )
     stage_tag: Literal["hole_only", "bar_installed", "grouted", "unclear"] | None = None
 
 
@@ -61,6 +93,9 @@ class ImageResult(BaseModel):
     failure: Failure | None = None
     runtime_s: float | None = None
     peak_vram_mb: float | None = None
+    # Top-level model/config so empty-detection rows still key correctly in the store.
+    model: str | None = None
+    config_id: str | None = None
 
 
 class RunManifest(BaseModel):

@@ -32,6 +32,13 @@ def _unimplemented(name: str) -> Callable[[argparse.Namespace], int]:
     return _fn
 
 
+def cmd_ui(args: argparse.Namespace) -> int:
+    from soilnail.ui import launch_ui
+
+    launch_ui(args.config)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="soilnail")
     sub = p.add_subparsers(dest="command", required=True)
@@ -40,7 +47,11 @@ def build_parser() -> argparse.ArgumentParser:
     ing.add_argument("--config", default="configs/ingest.yaml")
     ing.set_defaults(func=cmd_ingest)
 
-    for name in ("pilot", "run", "ui", "report"):
+    ui = sub.add_parser("ui", help="Launch local review UI (Streamlit)")
+    ui.add_argument("--config", default="configs/ui.yaml")
+    ui.set_defaults(func=cmd_ui)
+
+    for name in ("pilot", "run", "report"):
         sp = sub.add_parser(name, help=f"{name} (later phase)")
         sp.add_argument("--config", required=False, default=None)
         sp.set_defaults(func=_unimplemented(name))

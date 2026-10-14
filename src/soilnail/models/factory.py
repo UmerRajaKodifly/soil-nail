@@ -25,6 +25,7 @@ def build_segmenter(
     multi_instance: bool | None = None,
     feature_ensemble: bool = False,
     device: str | None = None,
+    sam_embedding_cache: Any | None = None,
 ) -> Any:
     cfg = load_yaml(models_cfg_path)
     chash = _config_hash(cfg)
@@ -54,6 +55,7 @@ def build_segmenter(
             cache_dir=cache_dir if model_name == "persam_f" else None,
             config_hash=chash,
             device=device,
+            sam_embedding_cache=sam_embedding_cache,
         )
     if model_name == "seggpt":
         sg = cfg["seggpt"]

@@ -1,4 +1,8 @@
-"""SQLite results store — atomic per-image writes, schema_versioned."""
+"""SQLite results store — atomic per-image writes, schema_versioned.
+
+Primary key is (run_id, image_id, model) so multi-model runs do not overwrite
+each other (D024).
+"""
 
 from __future__ import annotations
 
@@ -8,7 +12,7 @@ from pathlib import Path
 
 from soilnail.schemas import Detection, Failure, ImageResult, RunManifest
 
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"
 
 
 class ResultsStore:
@@ -33,12 +37,65 @@ class ResultsStore:
             CREATE TABLE IF NOT EXISTS image_results (
               run_id TEXT NOT NULL,
               image_id TEXT NOT NULL,
+              model TEXT NOT NULL DEFAULT '',
               status TEXT NOT NULL,
               result_json TEXT NOT NULL,
-              PRIMARY KEY (run_id, image_id)
+              PRIMARY KEY (run_id, image_id, model)
             );
             INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', '{SCHEMA_VERSION}');
             """
+        )
+        self._conn.commit()
+        self._migrate_v1_to_v2()
+
+    def _migrate_v1_to_v2(self) -> None:
+        """Add model column / rebuild PK if an older single-model schema exists."""
+        cols = {
+            r[1]
+            for r in self._conn.execute("PRAGMA table_info(image_results)").fetchall()
+        }
+        if "model" in cols:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_version', ?)",
+                (SCHEMA_VERSION,),
+            )
+            self._conn.commit()
+            return
+        # Rebuild table with model in PK.
+        self._conn.executescript(
+            """
+            CREATE TABLE image_results_v2 (
+              run_id TEXT NOT NULL,
+              image_id TEXT NOT NULL,
+              model TEXT NOT NULL DEFAULT '',
+              status TEXT NOT NULL,
+              result_json TEXT NOT NULL,
+              PRIMARY KEY (run_id, image_id, model)
+            );
+            """
+        )
+        rows = self._conn.execute(
+            "SELECT run_id, image_id, status, result_json FROM image_results"
+        ).fetchall()
+        for run_id, image_id, status, result_json in rows:
+            model = _model_from_result_json(result_json)
+            self._conn.execute(
+                """
+                INSERT OR REPLACE INTO image_results_v2
+                (run_id, image_id, model, status, result_json)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (run_id, image_id, model, status, result_json),
+            )
+        self._conn.executescript(
+            """
+            DROP TABLE image_results;
+            ALTER TABLE image_results_v2 RENAME TO image_results;
+            """
+        )
+        self._conn.execute(
+            "INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_version', ?)",
+            (SCHEMA_VERSION,),
         )
         self._conn.commit()
 
@@ -54,48 +111,128 @@ class ResultsStore:
         self._conn.commit()
 
     def write_image_result(self, run_id: str, result: ImageResult) -> None:
+        model = _model_from_image_result(result)
         self._conn.execute(
             """
-            INSERT OR REPLACE INTO image_results(run_id, image_id, status, result_json)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE INTO image_results(run_id, image_id, model, status, result_json)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (run_id, result.image_id, result.status, result.model_dump_json()),
+            (run_id, result.image_id, model, result.status, result.model_dump_json()),
         )
         self._conn.commit()
 
-    def get_image_result(self, run_id: str, image_id: str) -> ImageResult | None:
-        cur = self._conn.execute(
-            "SELECT result_json FROM image_results WHERE run_id=? AND image_id=?",
-            (run_id, image_id),
-        )
+    def get_image_result(
+        self, run_id: str, image_id: str, *, model: str | None = None
+    ) -> ImageResult | None:
+        if model is None:
+            cur = self._conn.execute(
+                "SELECT result_json FROM image_results WHERE run_id=? AND image_id=? LIMIT 1",
+                (run_id, image_id),
+            )
+        else:
+            cur = self._conn.execute(
+                "SELECT result_json FROM image_results WHERE run_id=? AND image_id=? AND model=?",
+                (run_id, image_id, model),
+            )
         row = cur.fetchone()
         if row is None:
             return None
         return ImageResult.model_validate_json(row[0])
 
-    def list_image_ids(self, run_id: str) -> list[str]:
+    def list_models(self, run_id: str) -> list[str]:
         cur = self._conn.execute(
-            "SELECT image_id FROM image_results WHERE run_id=? ORDER BY image_id",
+            "SELECT DISTINCT model FROM image_results WHERE run_id=? ORDER BY model",
             (run_id,),
         )
         return [r[0] for r in cur.fetchall()]
 
-    def export_detections_json(self, run_id: str, path: Path) -> None:
-        ids = self.list_image_ids(run_id)
-        payload: list[dict[str, object]] = []
-        for iid in ids:
-            res = self.get_image_result(run_id, iid)
-            if res is None:
-                continue
-            payload.append(json.loads(res.model_dump_json()))
-        path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    def list_image_ids(self, run_id: str, *, model: str | None = None) -> list[str]:
+        if model is None:
+            cur = self._conn.execute(
+                "SELECT DISTINCT image_id FROM image_results WHERE run_id=? ORDER BY image_id",
+                (run_id,),
+            )
+        else:
+            cur = self._conn.execute(
+                """
+                SELECT image_id FROM image_results
+                WHERE run_id=? AND model=? ORDER BY image_id
+                """,
+                (run_id, model),
+            )
+        return [r[0] for r in cur.fetchall()]
 
-    def count_by_status(self, run_id: str) -> dict[str, int]:
+    def list_rows(
+        self, run_id: str, *, model: str | None = None
+    ) -> list[tuple[str, str, str]]:
+        """Return (image_id, model, status) rows."""
+        if model is None:
+            cur = self._conn.execute(
+                """
+                SELECT image_id, model, status FROM image_results
+                WHERE run_id=? ORDER BY image_id, model
+                """,
+                (run_id,),
+            )
+        else:
+            cur = self._conn.execute(
+                """
+                SELECT image_id, model, status FROM image_results
+                WHERE run_id=? AND model=? ORDER BY image_id
+                """,
+                (run_id, model),
+            )
+        return [(str(a), str(b), str(c)) for a, b, c in cur.fetchall()]
+
+    def export_detections_json(self, run_id: str, path: Path) -> None:
         cur = self._conn.execute(
-            "SELECT status, COUNT(*) FROM image_results WHERE run_id=? GROUP BY status",
+            "SELECT result_json FROM image_results WHERE run_id=? ORDER BY image_id, model",
             (run_id,),
         )
+        payload = [json.loads(r[0]) for r in cur.fetchall()]
+        path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def count_by_status(self, run_id: str, *, model: str | None = None) -> dict[str, int]:
+        if model is None:
+            cur = self._conn.execute(
+                "SELECT status, COUNT(*) FROM image_results WHERE run_id=? GROUP BY status",
+                (run_id,),
+            )
+        else:
+            cur = self._conn.execute(
+                """
+                SELECT status, COUNT(*) FROM image_results
+                WHERE run_id=? AND model=? GROUP BY status
+                """,
+                (run_id, model),
+            )
         return {r[0]: int(r[1]) for r in cur.fetchall()}
+
+
+def _model_from_result_json(result_json: str) -> str:
+    try:
+        data = json.loads(result_json)
+    except json.JSONDecodeError:
+        return ""
+    if data.get("model"):
+        return str(data["model"])
+    dets = data.get("detections") or []
+    if dets and isinstance(dets[0], dict) and dets[0].get("model"):
+        return str(dets[0]["model"])
+    fail = data.get("failure") or {}
+    if isinstance(fail, dict) and fail.get("model"):
+        return str(fail["model"])
+    return ""
+
+
+def _model_from_image_result(result: ImageResult) -> str:
+    if result.model:
+        return result.model
+    if result.detections:
+        return result.detections[0].model
+    if result.failure is not None and result.failure.model:
+        return result.failure.model
+    return ""
 
 
 def detection_from_mask(

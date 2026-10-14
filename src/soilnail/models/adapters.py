@@ -54,6 +54,7 @@ class PerSAMAdapter:
         cache_dir: Path | None,
         config_hash: str,
         device: str | None = None,
+        sam_embedding_cache: Any | None = None,
     ) -> None:
         self.mode = mode
         self.sam_type = sam_type
@@ -70,6 +71,7 @@ class PerSAMAdapter:
         self.cache_dir = cache_dir
         self.config_hash = config_hash
         self.device = device
+        self.sam_embedding_cache = sam_embedding_cache
         self._inner: Any = None
 
     def prepare(self, refs: PreparedRefs) -> None:
@@ -142,11 +144,39 @@ class PerSAMAdapter:
     def segment(self, image_rgb: NDArray[np.uint8]) -> SegmentOutput:
         if self._inner is None:
             raise RuntimeError("prepare() not called")
-        result = self._inner.segment(image_rgb)
+        cache_hit = False
+        predictor = getattr(self._inner, "predictor", None)
+        if self.sam_embedding_cache is not None and predictor is not None:
+            from soilnail.models.sam_cache import ensure_image_embedding
+
+            cache_hit = ensure_image_embedding(
+                predictor,
+                image_rgb,
+                self.ckpt,
+                self.sam_embedding_cache,
+                predictor.device,
+            )
+            # Embedding is set (hit or freshly computed). Skip re-encode in legacy segment().
+            orig_set = predictor.set_image
+
+            def _noop_set_image(*args: Any, **kwargs: Any) -> Any:
+                if len(args) >= 2 or "mask" in kwargs:
+                    return orig_set(*args, **kwargs)
+                return None
+
+            predictor.set_image = _noop_set_image
+            try:
+                result = self._inner.segment(image_rgb)
+            finally:
+                predictor.set_image = orig_set
+        else:
+            result = self._inner.segment(image_rgb)
+        meta = dict(result.meta)
+        meta["sam_embedding_cache_hit"] = cache_hit
         return SegmentOutput(
             masks=list(result.masks),
             scores=[float(s) for s in result.scores],
-            meta=dict(result.meta),
+            meta=meta,
         )
 
     def close(self) -> None:
