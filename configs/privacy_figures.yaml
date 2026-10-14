@@ -1,0 +1,28 @@
+# Display-time privacy for report/PDF figures. Never alters model inputs.
+
+schema_version: "1"
+
+default_redaction:
+  nadir_equirect_fraction: 0.18
+  blur_down_face: true
+  method: gaussian_blur_ksize_51
+  source: "soilnail.privacy — operator often in nadir"
+
+# Populated during report build: every PDF figure is reviewed.
+figure_review:
+  required: true
+  checklist:
+    - id: check_identifiable_people
+      description: >
+        Manual/page review of each PDF figure for identifiable faces or
+        distinguishing clothing close-ups outside the nadir band.
+  redacted_figures: []  # append {figure_id, path, reason, method} at report build
+  source: "user follow-up 2 item 6"
+
+privacy_note: >
+  Privacy: nadir / Down-face Gaussian blur is applied at display time for
+  galleries and PDF exports (operator often visible). There is NO automatic
+  person detector — workers on platforms in side faces are NOT auto-redacted.
+  Every PDF figure is reviewed; any additional redaction is listed in
+  configs/privacy_figures.yaml figure_review.redacted_figures. Model inputs
+  and stored detections are never altered.

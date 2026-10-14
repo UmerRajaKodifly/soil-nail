@@ -1,12 +1,13 @@
-# Experiment matrix for pilot + full-run baseline selection.
+# Experiment matrix for cubemap pilot + full-run baseline (360° amendment).
 
-schema_version: "1"
+schema_version: "2"
 
 time_budget_hours: 8.0
 source_budget: "spec Gate 2 — proceed automatically if baseline full run ≤ 8h"
 
 pilot:
   size: 48
+  micro_size: 4
   source: >
     my decision — ~8% of 591 images; stratified by archive
     (images:8, walk1:40) for runtime/VRAM estimates without full spend
@@ -15,9 +16,20 @@ pilot:
 
 label_sample:
   size: 80
+  per_walk_quotas:
+    C55_W1: 60
+    F159_VID: 20
+  split:
+    mode: contiguous_blocks_within_walk
+    buffer_gap_frames: 5
+    tuning_frac: 0.5
+  reference_site_id: C55
+  reporting:
+    never_pool_for_transfer_claims: true
+    announce_F159_n50_wide_intervals: true
   source: >
-    my decision — later review queue; ~14% of dataset, split by walk/archive
-    clusters into tuning/heldout (Phase 4)
+    follow-up 2: per-walk quotas (F159 floor 20); blocked split with buffer;
+    C55 in-site vs F159 cross-site — never pool for transfer claims.
 
 references:
   single:
@@ -25,6 +37,10 @@ references:
     - nail_ref_02_2D16_rebar_install
     - nail_ref_03_2D17_depth_measure
   ensemble: all
+  reference_site_id: C55
+  reference_note: >
+    QA photos from site C55 (feature 11NW–A/C55). Not walk frames (no pixel leakage).
+    Physical nails 2D12/2D16/2D17 may appear in C55_W1 walk imagery. F159 is cross-site.
   paths:
     images_dir: data/refs/soil_nail/images
     masks_dir: data/refs/soil_nail/masks
@@ -34,43 +50,44 @@ models:
   - persam_f
   - seggpt
 
-# Pilot sweeps these; full run uses baseline only unless estimate allows more.
-pilot_grid:
-  scales:
-    - name: whole
-      tiling: false
-      tile_px: null
-    - name: tile_1024
-      tiling: true
-      tile_px: 1024
-    - name: tile_1536
-      tiling: true
-      tile_px: 1536
-  refs_modes:
-    - single_each
-    - ensemble
-  instance_mode: true
-  tight_prompt_crop_ablation: true
-  source: >
-    tiling sizes from configs/models.yaml (SAM 1024; 1536 for 3840-wide frames);
-    tight crop ablation only (hurt LOO)
-
+# Gate 2 option C (cubemap): baseline = 6 faces × 3 models, shared SAM embeds.
 baseline_full_run:
+  representation: cubemap
   refs_mode: ensemble
   instance_mode: true
-  scales:
-    - whole
-    - tile_1024
+  face_size: 1024
+  fov_deg: 90.0
+  margin_deg: 15.0
   models:
     - persam
     - persam_f
     - seggpt
   tight_prompt_crop: false
-  source: "spec Phase 3 baseline definition"
+  source: >
+    follow-up 2: face_size 1024 (SAM-native rationale); margin_deg 15 from
+    real-model yaw-sweep (retention at 0/5 ≪ 0.95 vs m=15 baseline).
+    Evidence: outputs/pilot_cubemap/ablation_decision.json
+
+pilot_grid:
+  # Baseline cells (always timed)
+  cubemap_baseline: true
+  # Ablations — pilot only
+  equirect_whole: true
+  persam_face_subtile: true
+  margin_sweep: [0.0, 5.0, 15.0]
+  face_size_candidates: [960, 1024]
+  source: "user amendment — equirect + subtile are pilot ablations only"
+
+# Legacy CLI arg retained; production merge uses configs/projection.yaml merge: section
+angular_merge_deg: 5.0
+source_merge: "superseded by projection.merge overlap-primary rule (D021)"
 
 paths:
   models_config: configs/models.yaml
+  projection_config: configs/projection.yaml
   manifest_sqlite: data/manifests/dataset.sqlite
   extract_root: data/site_walk_extracted
-  pilot_out: outputs/pilot
+  pilot_out: outputs/pilot_cubemap
+  pilot_equirect_legacy: outputs/pilot
   runs_out: outputs/runs
+  sam_face_cache: data/caches/sam_face_embeddings

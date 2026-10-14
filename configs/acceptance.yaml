@@ -1,0 +1,19 @@
+# Acceptance criteria template — null until the user supplies targets.
+# Do not invent thresholds.
+
+schema_version: "1"
+status: unset
+source: "spec Phase 5 — create template with nulls if absent"
+
+targets:
+  precision: null
+  recall: null
+  f1: null
+  count_mae: null
+  count_bias: null
+
+per_walk_targets: null  # if set, grade C55_W1 and F159_VID separately
+
+notes: >
+  C55 = in-site; F159 = cross-site. Never pool for transfer claims.
+  F159 n=50 → expect wide intervals.

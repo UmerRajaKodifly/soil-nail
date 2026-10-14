@@ -1,0 +1,60 @@
+# First-class walk / site dimension. Ids from user 2026-10-08 (follow-up 2).
+
+schema_version: "1"
+
+reference_site_id: C55
+reference_site_source: >
+  Curated nail_ref_01..03 (2D12, 2D16, 2D17) are QA photos from site C55.
+  C55 walk frames are in-site (optimistic for transfer); F159 is cross-site.
+  Reference photos are not walk frames — no pixel leakage — but the same physical
+  nails may appear in C55 walk imagery.
+
+walks:
+  - archive: walk1
+    walk_id: C55_W1
+    site_id: C55
+    feature_no: "11NW–A/C55"  # from reference whiteboard Contract GE/2024/21
+    csv: "Walk 1.csv"
+    crs: WGS84
+    n_frames: 541
+    role: in_site  # same site as references
+    source: "user follow-up 2 — 2026-10-08"
+
+  - archive: images
+    walk_id: F159_VID
+    site_id: F159
+    feature_no: null  # do not invent
+    csv: VID_20260808_104335_00_011.csv
+    crs: local_metres
+    n_frames: 50
+    role: cross_site  # transfer test; n=50 → wide intervals
+    map_mode: plan_view_only  # no verified origin for geographic basemap
+    source: "user follow-up 2 — 2026-10-08"
+
+# Do not map these to FR52/FR53/FR94 — use only ids above.
+
+label_sampling:
+  per_walk_quotas: true
+  min_frames_F159_VID: 20
+  source: "user follow-up — floor so 50-frame walk is not drowned"
+
+label_split:
+  mode: contiguous_blocks_within_walk
+  buffer_gap: derived_from_csv_spacing
+  secondary_cross_walk_transfer: exploratory
+  note: >
+    C55 = in-site eval; F159 = cross-site transfer. Never pool them to claim transfer.
+  source: "user follow-up 2"
+
+maps:
+  one_basemap_per_walk: true
+  forbid_joint_basemap: true
+  F159_VID: plan_view_only
+  C55_W1: geographic_WGS84
+  source: "user follow-up 2"
+
+reporting:
+  every_metric_per_walk_and_pooled: true
+  never_pool_for_transfer_claims: true
+  announce_F159_n50_wide_intervals: true
+  source: "user follow-up 2"

@@ -1,0 +1,49 @@
+# Review UI configuration (Phase 4).
+
+schema_version: "1"
+
+runs_root: outputs/runs
+# Prefer the PersAM-complete full run when several exist.
+default_run_id: full_cubemap_20261008T073139Z_f6edda62
+# Restrict model list in Gallery/Viewer (empty = all models present in the store).
+models_filter:
+  - persam
+  - persam_f
+  - seggpt
+manifest_sqlite: data/manifests/dataset.sqlite
+extract_root: data/site_walk_extracted
+walks_config: configs/walks.yaml
+labels_sqlite: outputs/labels/labels.sqlite
+privacy_config: configs/privacy_figures.yaml
+thumbnail_cache: data/caches/ui_thumbs
+thumbnail_max_edge: 512
+
+colours:
+  # Colour-blind-safe (Wong) — distinct per model
+  persam: "#0072B2"
+  persam_f: "#E69F00"
+  seggpt: "#009E73"
+  source: "Wong colour-blind palette"
+
+gallery:
+  page_size: 24
+  default_sort: image_id
+
+map:
+  # C55_W1 only for geographic basemap; F159 is plan_view_only (local metres).
+  default_basemap: OpenStreetMap
+  source: configs/walks.yaml maps section
+
+label_queue:
+  seed: 42
+  size: 80
+  per_walk_quotas:
+    C55_W1: 60
+    F159_VID: 20
+  split:
+    mode: contiguous_blocks_within_walk
+    tuning_frac: 0.5
+    buffer_gap_frames: 5  # keep neighbours out of opposite split
+  source: configs/walks.yaml label_sampling + experiments label_sample
+
+raw_score_label: "uncalibrated (not confidence)"

@@ -1,0 +1,79 @@
+# 360° equirect ↔ cubemap. All angles in degrees unless noted.
+# Conventions: docs/PROJECTION.md
+
+schema_version: "1"
+
+equirect:
+  require_aspect_2to1: true
+  aspect_slack: 0.0
+  source: "measured — all 591 frames are exactly 3840x1920; reject anything else"
+
+  wrap_seam:
+    # Independent of the judged ratio sample (see wrap_seam_review.json).
+    # Units of abs stats: mean |ΔRGB| over rows×channels (grey-levels 0–255).
+    max_wrap_abs: 25.418684649467465
+    rule: "fail if wrap_abs > adj_p95 + 0.25*(distant_med - adj_med)"
+    source: >
+      null-only 2026-10-08: adj_p95=10.113, distant_med=68.039 → crit=25.419.
+      Evidence: data/manifests/wrap_seam_review.json. Ratio-based 1.5×p99.5 kept only
+      as descriptive (previous_criterion_limits). Offset ±k test: 0/10 worst and
+      0/10 typical prefer k≠0 — no duplicated/missing column detected.
+    descriptive_ratio_p995_x1_5: 8.479762423038476
+    descriptive_note: "NOT used as fail gate — circular with the sample"
+
+cubemap:
+  face_size: 1024
+  face_size_candidates: [960, 1024, 1222]
+  fov_deg: 90.0
+  margin_deg: 15.0
+  margin_deg_pilot_sweep: [0.0, 5.0, 15.0]
+  interpolation: bilinear  # bilinear | bicubic
+  yaw_offset_deg: 0.0
+  second_pass_yaw_deg: 45.0  # opt-in seam ablation; off by default
+  enable_second_pass: false
+  source: >
+    face_size 1024 = SAM-native (rationale, D022); 960=W/4, 1222=W/π centre-match.
+    margin_deg 15 from real-model yaw-sweep (persam retention m0=0.29 m5=0.31 vs m15;
+    neither ≥0.95) — outputs/pilot_cubemap/ablation_decision.json. Stub-chosen 0 superseded.
+
+faces:
+  order: [F, R, B, L, U, D]
+  source: "py360convert FRBLUD — docs/PROJECTION.md"
+
+angular_size:
+  # Physical-ish flags (solid angle / angular width), not raw face pixels.
+  min_instance_angular_width_deg: 0.5
+  max_instance_angular_width_deg: 60.0
+  area_flag_solid_angle_steradians: 0.05
+  source: "my decision — provisional; tune on labelling set only"
+
+merge:
+  overlap_jaccard_min: 0.05
+  secondary_centroid_deg: 2.0
+  coarse_width: 720
+  coarse_height: 360
+  source: >
+    primary: Jaccard≥0.05 on 0.5° equirect bins after mask reprojection;
+    secondary: both touches_border AND centroid < 2° (=4× min_instance 0.5°).
+    Sensitivity: outputs/pilot_cubemap/merge_sensitivity.json — at 2° sep1 merges,
+    sep3/sep6 stay 2; at ≥5° neighbouring-nail scale (~5.7° for 2m@20m) collapses.
+    Replaces centroid-only angular_merge_deg=5.
+
+sam_face_cache:
+  enabled: true
+  dtype: float32  # fp16/bf16 only via validated opt-in experiment
+  dir: data/caches/sam_face_embeddings
+  source: "amendment — share SAM image embedding per face across PerSAM/PerSAM-F/refs"
+
+subtile_ablation:
+  # Pilot only. Arithmetic check: face 960, tile 512, overlap 0.25 → stride 384 → 3×3=9 tiles/face → 54/frame.
+  enabled_on_pilot: true
+  enabled_on_full: false
+  tile_px: 512
+  overlap: 0.25
+  source: "user amendment option C; verify tile count in tests"
+
+equirect_ablation:
+  enabled_on_pilot: true
+  enabled_on_full: false
+  source: "user amendment — quantify cost of ignoring distortion; superseded for decisions"
