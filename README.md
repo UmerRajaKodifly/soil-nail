@@ -1,74 +1,85 @@
-# Soil-nail one-shot segmentation (PerSAM vs SegGPT)
+# Soil-nail 360° detection (PerSAM / PerSAM-F / SegGPT)
 
-Experiment workspace for SmartEye (CEDD GEO GE/2024/21): compare **PerSAM / PerSAM-F** and **SegGPT** on site-walk photos of soil-nail heads.
+SmartEye experiment for CEDD GEO GE/2024/21: detect soil-nail heads in **360° equirectangular** site-walk panoramas using one-shot segmentation (PerSAM, PerSAM-F, SegGPT) with cubemap projection, cross-face merge, and a local review UI.
 
-## Status
+**Inputs:** reference nail photos + masks; site-walk zips + GPS/pose CSVs (not in git).  
+**Outputs:** SQLite results store, overlay galleries, descriptive reports, Streamlit review UI.
+
+## Status (handover)
 
 | Phase | Status |
 |-------|--------|
-| 0 Recon | done |
-| 1 Env + smoke | done |
-| 2 Annotator + wrappers | code ready — **draw variant-B masks, then LOO** |
-| 3 LOO matrix | blocked on masks for refs 02 & 03 |
+| 0–2 | Done (package, LOO on refs, annotator) |
+| 3 Gate 2 | Done — cubemap baseline ≤8 h → proceed |
+| 4 Full run + UI | PersAM + PersAM-F complete on 591 frames; SegGPT was in progress (verify); UI works |
+| 5 Eval + PDF | Scaffolded; needs labelled walk frames |
+| 6 Hardening | Partial |
 
-## Quick start
+Walks: **C55_W1** (in-site vs refs) and **F159_VID** (cross-site, n=50). See `configs/walks.yaml`.
+
+## Setup
 
 ```bash
-bash scripts/setup.sh
+bash scripts/setup.sh          # venv, torch cu128, weights, Personalize-SAM
 source .venv/bin/activate
-python scripts/smoke_all.py
+pip install -e ".[dev]"
+pip install -r requirements.txt
+# UI extras (if not already installed):
+pip install 'streamlit>=1.28' 'plotly>=5.18' 'folium>=0.15' 'streamlit-folium>=0.15'
 ```
 
-### Annotate reference masks (variant B = default)
+### Large files (not in git)
+
+| Asset | Where / how |
+|-------|-------------|
+| SAM ViT-H | `weights/sam_vit_h_4b8939.pth` via `scripts/setup.sh` (SHA in `configs/models.yaml`) |
+| MobileSAM | `weights/mobile_sam.pt` |
+| SegGPT | Hugging Face `BAAI/seggpt-vit-large` (cached under HF hub) |
+| Site-walk zips + CSVs | Place under `data/site_walk_raw/` then `make ingest` (gitignored; privacy) |
+| Run outputs | `outputs/runs/` (gitignored; regenerable) |
+
+## Run
 
 ```bash
-python tools/annotate_mask.py --variant B
-# http://127.0.0.1:7860 — click the photo, Save, Next
-```
+# Ingest site-walk archives (after placing zips/CSVs in data/site_walk_raw/)
+make ingest
 
-See `data/refs/soil_nail/MASKS.md`.
+# Full cubemap baseline (resumable; ~hours on 8 GB GPU)
+.venv/bin/python -u scripts/run_full_cubemap.py --config configs/experiments.yaml
+# Resume:
+.venv/bin/python -u scripts/run_full_cubemap.py --resume-dir outputs/runs/<run_id>
 
-### Compare / leave-one-out
+# Review UI
+make ui
+# or: .venv/bin/python -m soilnail.cli ui --config configs/ui.yaml
+# http://localhost:8501
 
-```bash
-# single run
-python compare.py --cls soil_nail --variant B --ref nail_ref_02_2D16_rebar_install \
-  --images data/refs/soil_nail/images/nail_ref_01_2D12_rebar_install.jpg \
-  --out outputs/demo --models persam persam_f seggpt
+# PersAM-only descriptive report (example)
+.venv/bin/python scripts/report_persam_descriptive.py
 
-# optional EXTENSIONS: --tight_prompt_crop --multi_instance --tile --crop_bottom_right
-
-# full LOO matrix (needs B masks for refs 01, 02, 03)
+# Classic LOO on reference photos
 python scripts/run_loo_matrix.py --out outputs/loo_b
 ```
 
-## Pins
+Active full-run log (if present): `logs/full_cubemap_m15.log` (not `logs/full_cubemap.log`).
 
-- PerSAM upstream: `third_party/Personalize-SAM` @ `a7e87245156e0b8efcba10a15a745e699c679d9d` (**untouched**)
-- Python: 3.10 (3.11 OK)
-- PyTorch: `2.11.0+cu128` · transformers: `5.19.0`
-- SAM ViT-H: `weights/sam_vit_h_4b8939.pth` · MobileSAM: `weights/mobile_sam.pt`
-- SegGPT: `BAAI/seggpt-vit-large`
+## Test
 
-**Important:** PerSAM inference uses vendored `per_segment_anything` (modified SAM). Official `segment_anything` is for the annotator only.
+```bash
+make check          # ruff + mypy --strict + pytest + bandit + pip-audit
+# or
+.venv/bin/python -m pytest -q
+```
 
-## Mask variants
+## Config pointers
 
-| Variant | Path | Meaning |
-|---------|------|---------|
-| **B (default)** | `data/refs/<cls>/masks/` | sleeve + bar end + hose roots only |
-| **A (comparison)** | `data/refs/<cls>/masks_A/` | hole + contents |
-
-## Extensions (opt-in, not in original papers)
-
-- `--tight_prompt_crop` — crop prompt image/mask around ref mask (+ margin)
-- `--multi_instance` — PerSAM multi-peak + NMS
-- `--tile` — sliding-window (scaffolded; full-frame still used until tiling merge is wired in compare)
-- `--crop_bottom_right` — blank date stamp
-- Multi-reference target-feature averaging
-- Mask-area sanity flag if prediction or ref mask **> 25%** of image (`mask_area_flag` in `summary.csv`)
-- SegGPT: saves `*_seggpt_raw.npz` + heatmap under `<out>/seggpt_raw/`
+- `configs/experiments.yaml` — baseline face_size=1024, margin_deg=15 (yaw-sweep evidence)
+- `configs/projection.yaml` — cubemap + overlap-primary merge
+- `configs/walks.yaml` — C55 / F159 site ids; `reference_site_id: C55`
+- `configs/ui.yaml` — review UI
+- `docs/DEVIATIONS.md` — intentional shortcuts / evidence links
+- `docs/LABELLING_PROTOCOL.md` — in-site vs cross-site labelling rules
 
 ## Licences
 
-- PerSAM: MIT · Segment Anything: Apache-2.0 · SegGPT/Painter: check upstream before redistribution
+PerSAM: MIT · Segment Anything: Apache-2.0 · SegGPT/Painter: check upstream before redistribution. See `docs/LICENSES.md` (flag for legal review).
