@@ -67,9 +67,30 @@ Orange-ish high-saturation pixels in the bottom-right probe corner were boxed on
 
 **Decision:** stamp crop stays **OFF** by default. If enabled later, use the measured site-walk consensus (`0.25` × `0.1203125`), not the reference-photo values. Some orange detections may be soil/equipment rather than a date stamp — treat as optional ablation.
 
+## 360° equirectangular verification (amendment)
+
+**Question:** are the 591 site-walk frames full 360°×180° equirectangular panoramas?
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Aspect ratio | **All 591 are exactly `3840×1920` (2:1)** | `data/manifests/dataset.sqlite` + full scan |
+| EXIF | **None** (0/591 have Exif APP1 marker) | byte scan of every frame |
+| GPano / XMP `ProjectionType` | **None** (0/591) | byte scan for `GPano`, `ProjectionType`, `equirectangular` |
+| Wrap seam | **All 591**: ratio p50=1.41 (descriptive). **Independent fail gate** (null-only, not the judged ratio sample): fail if `wrap_abs > adj_p95 + 0.25*(distant_med−adj_med)` = **25.42 grey-levels**; **0 fails**. Units: mean |\Delta| RGB over rows×channels (0–255). Null adj med=6.81 / distant med=68 / broken≈12 are grey-level column diffs (see `wrap_seam_review.json` units). Offset ±k: no dup/missing column. Visual: 10 worst + 10 typical ±64 px crops continuous (texture, not stitch tear). | `wrap_seam_all591.json`, `wrap_seam_review.json`, `outputs/pano360_probe/wrap_review/` |
+| Level (pitch/roll) | CSV `pitch`/`roll`/`course` are **all 0.0** on both walks — **not usable** for leveling or heading | CSV profile in this section |
+| Zenith / nadir (n=6 visual) | Zenith ≈ sky/clouds; nadir ≈ **operator clothing / mount** (people may appear) | `outputs/pano360_probe/*_{zenith,nadir}.jpg` |
+| Burned-in stamp | Earlier stamp probe was on mixed sample; **no EXIF date stamp**. Orange corner heuristic may fire on soil/equipment — crop stays off | prior `stamp_measure.json` |
+| Face-size arithmetic | Equator **10.666… px/deg**; 90° density match = **960** (= W/4). Draft “≈1222” is `W/π`, **not** used | measured |
+
+**Verdict:** Geometry is consistent with **full equirectangular 2:1** panoramas. Metadata does **not** confirm `ProjectionType=equirectangular` (stripped JPEGs). We accept 2:1 + wrap continuity + pole content as operational evidence; reject any future frame with `W ≠ 2H`.
+
+**CSV pose:** `course` exists but is identically zero — do **not** use as yaw/heading until a non-zero source is documented.
+
+**Privacy:** nadir faces often show the operator; keep local-only.
+
 ## Privacy
 
-Site-walk photos may contain people. Data stays under `data/site_walk_*` (gitignored). No uploads.
+Site-walk photos may contain people (especially nadir / down face). Data stays under `data/site_walk_*` (gitignored). No uploads.
 
 ## Manifest
 

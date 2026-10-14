@@ -162,3 +162,7 @@ Prototype is sufficient to prove GPU pipelines and LOO anecdotes. It is **not** 
 3. Wire tiling for real; cache PerSAM-F weights; pin model revisions.
 4. Golden-test LOO IoUs before full site-walk spend.
 5. Exclude legacy modules from `mypy --strict` until moved into `src/soilnail/` (see `docs/DEVIATIONS.md`).
+
+## 360 amendment (2026-10-08)
+
+Site-walk frames are full equirectangular 2:1. Production path is cubemap (`docs/PROJECTION.md`). Equirect pilots superseded. Cubemap Gate 2: **3.24 h** (proceed). See DEVIATIONS D011–D015 and QA_REPORT.md.
