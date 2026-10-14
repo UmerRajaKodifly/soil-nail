@@ -2,7 +2,7 @@
 
 One-shot detection of soil-nail heads in 360° equirectangular site-walk panoramas for slope works QA. Inputs are curated reference nail photos/masks plus site-walk image zips and pose CSVs; outputs are per-frame detections (masks, uncalibrated scores, equirect polygons) in SQLite, overlay galleries, and a local Streamlit review UI. Stack: PyTorch + Segment Anything (PerSAM / PerSAM-F) and SegGPT, with a six-face cubemap pipeline, cross-face merge, and walk/site split (C55 in-site vs F159 cross-site).
 
-GitHub: TODO — publish to private `Kodifly/soil-nail` blocked on GitHub API connectivity from this machine (verify after `gh auth login` / network restore)
+GitHub: TODO — create private `Kodifly/soil-nail` (current GitHub user is org **member**, not admin: `CreateRepository` returned 403). After an org admin creates the empty private repo: `git remote add origin git@github.com:Kodifly/soil-nail.git && git push -u origin main` (local `main` = `cleanup` tip).
 Confluence: TODO
 Contact Person: TODO
 
